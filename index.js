@@ -76,6 +76,33 @@ app.get('/products', async(req, res)=>{
 })
 
 
+app.post('/products', async(req, res)=> {
+    try{
+        const body = req.body;
+        console.log(body)
+        const result = await ShopEaseCollection.insertOne(body)
+        console.log(`${result}`.blue)
+        if(result){
+            res.send({
+                success: true,
+                message: `Successfully saved the cart. Model No. ${body.model} `
+            })
+        }else{
+            res.send({
+                error: false,
+                message: `Cound't saved the product`
+            })
+        }
+    }
+    catch{(error)=> {
+        console.log(`${error.message}`.red)
+        res.send({
+            success: false,
+            message: error.message
+        })
+    }}
+})
+
 
 
 
