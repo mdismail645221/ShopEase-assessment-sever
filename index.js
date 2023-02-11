@@ -27,20 +27,22 @@ const uri = process.env.MONGOD_URL;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
 
-async function run () {
-    try{
-       await client.connect(err => {
-            if(err){
-              console.log(`${err}`.red)
-            }else{
+async function run() {
+    try {
+        await client.connect(err => {
+            if (err) {
+                console.log(`${err}`.red)
+            } else {
                 console.log("no error".bgBlue)
             }
-           });
+        });
 
     }
-    catch{(error)=>{
-        console.log(error)
-    }}
+    catch {
+        (error) => {
+            console.log(error)
+        }
+    }
 }
 
 run()
@@ -49,74 +51,120 @@ run()
 
 const ShopEaseCollection = client.db("ShopEaseAssessment").collection("products");
 const SaveProductsCollection = client.db("ShopEaseAssessment").collection("SaveProducts");
+const usersCollection = client.db("ShopEaseAssessment").collection("users");
 
 
-app.get('/products', async(req, res)=>{
-    try{
+app.put('/jwt', async(req, res)=> {
+    const email = req.query?.email;
+    const userInfo = req.body;
+
+    const filter = {email: email}
+    const options ={upsert: true};
+    const updateDoc = {
+        $set: userInfo,
+    }
+    const result = await usersCollection.updateOne(filter, updateDoc, options);
+    console.log(result)
+
+    // token generate
+    const token = jwt.sign(
+        {email: email},
+        process.env.JWT_TOKEN,
+        { expiresIn: "1d" }
+    )
+
+    console.log("token", token)
+    console.log("userInfo", userInfo, email)
+
+    
+})
+
+app.get('/products', async (req, res) => {
+    try {
         const body = {};
         const products = await ShopEaseCollection.find(body).toArray();
-        if(products){
+        if (products) {
             res.send({
                 success: true,
                 data: products
             })
-        }else{
+        } else {
             res.send({
                 success: false,
                 message: `Your are wrong enpoint. plz correct your enpoints`
             })
         }
     }
-    catch{(error)=> {
-        console.log(`${error.message}`.red)
-        res.send({
-            success: false,
-            message: error.message
-        })
-    }}
+    catch {
+        (error) => {
+            console.log(`${error.message}`.red)
+            res.send({
+                success: false,
+                message: error.message
+            })
+        }
+    }
 })
 
 
-app.post('/products', async(req, res)=> {
-    try{
+app.post('/products', async (req, res) => {
+    try {
         const body = req.body;
-        if(!body){
+        if (!body) {
             return res.send({
                 success: false,
-                message: `Cound't Product` 
+                message: `Cound't Product`
             })
         }
         const result = await SaveProductsCollection.insertOne(body)
         console.log(result)
-        if(result.acknowledged){
+        if (result.acknowledged) {
             res.send({
                 success: true,
                 message: 'successfully added the product'
             })
-        }else{
+        } else {
             res.send({
                 success: false,
-                message: `Cound't Product` 
+                message: `Cound't Product`
             })
         }
     }
-    catch{(error)=> {
-        console.log(`${error.message}`.red)
-        res.send({
-            success: false,
-            message: error.message
-        })
-    }}
+    catch {
+        (error) => {
+            console.log(`${error.message}`.red)
+            res.send({
+                success: false,
+                message: error.message
+            })
+        }
+    }
 })
 
 
 // Get the specifed saved the Product
-app.get('/userProduct', async(req, res)=> {
-    const query = req.query;
-    // console.log(email)
-    // const query = {email: email}
-    const result = await SaveProductsCollection.find(query).toArray();
-    console.log(result)
+app.get('/userProduct', async (req, res) => {
+    try {
+        const query = req.query;
+        console.log(query)
+        const result = await SaveProductsCollection.find(query).toArray();
+        if(result){
+            res.send({
+                success: true,
+                data: result
+            })
+        }else{
+            res.send({
+                success: false,
+                message: `cound't found in database`
+            })
+        }
+    }
+    catch {
+        (error) => {
+            console.log(`${error.message}`.red)
+        }
+    }
 })
 
 
@@ -126,12 +174,12 @@ app.get('/userProduct', async(req, res)=> {
 
 app.listen(port, () => {
     client.connect(err => {
-        if(err){
-          console.log(`${err}`.red)
-        }else{
+        if (err) {
+            console.log(`${err}`.red)
+        } else {
             console.log("no error".bgBlue)
         }
-       });
+    });
     console.log(`ShopEase server is running ${port}`.brightCyan)
 })
 
