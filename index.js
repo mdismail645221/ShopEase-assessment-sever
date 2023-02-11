@@ -17,14 +17,32 @@ app.get('/', (req, res) => {
     res.send('ShopEase server is running')
 })
 
-// 60FaF4weAZTW2UhI
-// ShopEaseAssessment
-
-
 
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const uri = process.env.MONGOD_URL;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
+
+
+
+// jwt verify funtion in middleware
+
+async function verifyJWT(req, res, next) {
+    const authHeader = req.headers.authorization;
+    // console.log("authHeader", authHeader)
+    if (!authHeader) {
+        return res.status(401).send("unauthorized access")
+    }
+    const token = authHeader.split(' ')[1];
+    jwt.verify(token, process.env.JWT_TOKEN, function (err, decoded) {
+        if (err) {
+            res.status(403).send("forbidden access")
+        }
+        req.decoded = decoded;
+        next()
+    })
+}
+
+
 
 
 async function run() {
@@ -50,7 +68,7 @@ run()
 
 
 const ShopEaseCollection = client.db("ShopEaseAssessment").collection("products");
-const SaveProductsCollection = client.db("ShopEaseAssessment").collection("SaveProducts");
+const SaveProductsCollection = client.db("ShopEaseAssessment").collection("products");
 const usersCollection = client.db("ShopEaseAssessment").collection("users");
 
 
@@ -64,7 +82,7 @@ app.put('/jwt', async(req, res)=> {
         $set: userInfo,
     }
     const result = await usersCollection.updateOne(filter, updateDoc, options);
-    console.log(result)
+    // console.log(result)
 
     // token generate
     const token = jwt.sign(
@@ -72,15 +90,20 @@ app.put('/jwt', async(req, res)=> {
         process.env.JWT_TOKEN,
         { expiresIn: "1d" }
     )
+    // console.log("token", token)
 
-    console.log("token", token)
-    console.log("userInfo", userInfo, email)
+    res.send({
+        status: "success",
+        message: "Token Created Successfully",
+        data: token
+    })
 
     
 })
 
-app.get('/products', async (req, res) => {
+app.get('/products', verifyJWT, async (req, res) => {
     try {
+        // console.log("products", req.headers.authorization)
         const body = {};
         const products = await ShopEaseCollection.find(body).toArray();
         if (products) {
@@ -110,18 +133,13 @@ app.get('/products', async (req, res) => {
 app.post('/products', async (req, res) => {
     try {
         const body = req.body;
-        if (!body) {
-            return res.send({
-                success: false,
-                message: `Cound't Product`
-            })
-        }
+        // console.log(body)
         const result = await SaveProductsCollection.insertOne(body)
-        console.log(result)
+        // console.log(result)
         if (result.acknowledged) {
             res.send({
                 success: true,
-                message: 'successfully added the product'
+                message: `successfully added the product ${result.insertedId}`
             })
         } else {
             res.send({
@@ -143,11 +161,12 @@ app.post('/products', async (req, res) => {
 
 
 // Get the specifed saved the Product
-app.get('/userProduct', async (req, res) => {
+app.get('/userProduct', verifyJWT,  async (req, res) => {
     try {
         const query = req.query;
         console.log(query)
         const result = await SaveProductsCollection.find(query).toArray();
+        console.log(result)
         if(result){
             res.send({
                 success: true,
