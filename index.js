@@ -48,6 +48,7 @@ run()
 
 
 const ShopEaseCollection = client.db("ShopEaseAssessment").collection("products");
+const SaveProductsCollection = client.db("ShopEaseAssessment").collection("SaveProducts");
 
 
 app.get('/products', async(req, res)=>{
@@ -79,18 +80,23 @@ app.get('/products', async(req, res)=>{
 app.post('/products', async(req, res)=> {
     try{
         const body = req.body;
-        console.log(body)
-        const result = await ShopEaseCollection.insertOne(body)
-        console.log(`${result}`.blue)
-        if(result){
+        if(!body){
+            return res.send({
+                success: false,
+                message: `Cound't Product` 
+            })
+        }
+        const result = await SaveProductsCollection.insertOne(body)
+        console.log(result)
+        if(result.acknowledged){
             res.send({
                 success: true,
-                message: `Successfully saved the cart. Model No. ${body.model} `
+                message: 'successfully added the product'
             })
         }else{
             res.send({
-                error: false,
-                message: `Cound't saved the product`
+                success: false,
+                message: `Cound't Product` 
             })
         }
     }
@@ -101,6 +107,16 @@ app.post('/products', async(req, res)=> {
             message: error.message
         })
     }}
+})
+
+
+// Get the specifed saved the Product
+app.get('/userProduct', async(req, res)=> {
+    const query = req.query;
+    // console.log(email)
+    // const query = {email: email}
+    const result = await SaveProductsCollection.find(query).toArray();
+    console.log(result)
 })
 
 
